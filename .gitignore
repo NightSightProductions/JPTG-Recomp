@@ -1,0 +1,25 @@
+# Whitelist: ignore everything, then allow only this project's own code.
+# Never commit gen/, gen_full/ (code generated from the game), orig.bin, build output,
+# game data or third_party/Blowfish.h.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/Makefile
+!/runtime/
+!/scripts/
+!/setup/
+!/packaging/
+!/tests/
+!/docs/
+!/tools/
+/tools/*
+!/tools/recomp.py
+!/tools/macho.py
+!/tools/glgen.py
+!/tools/hle.txt
+!/third_party/
+/third_party/*
+!/third_party/stb_vorbis.c
+.DS_Store
+__pycache__/

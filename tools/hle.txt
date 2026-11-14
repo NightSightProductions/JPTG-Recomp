@@ -1,0 +1,21 @@
+# guest functions replaced by native (host) implementations: address name [outside]
+# 'outside' = only when that function is not itself being translated (partial builds)
+9ccc9 C_FreeMemory outside
+9ccdb C_AllocMemory outside
+2c0b3d ttg_luaL_loadfile outside
+396fc0 OPENSSL_ia32_cpuid
+397170 OPENSSL_wipe_cpu
+# Cocoa-based platform layer
+9ed80 Apple_GetBundleResourceDirectory
+9f350 Apple_GetBundleDocumentsDirectory
+9ee2a Apple_GetSystemLanguage
+9ee9d Apple_GetMilliseconds
+9eeef Apple_GetOSString
+9fa68 Apple_Alert
+9faff Apple_SetCursorPosition
+9edd7 Apple_ShowSystemCursor
+9ed0f Apple_OpenURL
+9ee02 Apple_Terminate
+# renderer Objective-C bridge
+31b409 RenderDeviceGL_ObjC_Present
+31b43e RenderDeviceGL_ObjC_GetTotalVram

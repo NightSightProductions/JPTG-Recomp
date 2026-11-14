@@ -1,0 +1,27 @@
+print("hello from Telltale's Lua VM, recompiled for arm64")
+print(_VERSION)
+local function fib(n) if n < 2 then return n end return fib(n-1) + fib(n-2) end
+print("fib(20) =", fib(20))
+print("1/3 =", 1/3, " 2^10 =", 2^10, " 7 % 3 =", 7 % 3, " big =", 16777217)
+local t = {}
+for i = 1, 10 do t[#t+1] = i * i end
+print("squares:", table.concat(t, ","))
+table.sort(t, function(a, b) return a > b end)
+print("sorted desc:", table.concat(t, " "))
+print(string.format("fmt: %5.2f|%d|%s|%x|%q", math.pi, 42, "dino", 255, "a\"b"))
+print(("Jurassic Park"):upper(), ("RAPTOR"):lower(), ("abc"):rep(3), ("hello"):sub(2, 4))
+print(string.find("the T-rex escaped", "T%-(%a+)"))
+print(string.gsub("clever girl", "(%w+)", "<%1>"))
+for w in string.gmatch("one two three", "%a+") do io.write(w, ";") end print()
+local ok, err = pcall(function() error("nedry!") end)
+print("pcall:", ok, err)
+local co = coroutine.create(function(a) local b = coroutine.yield(a + 1); return b * 2 end)
+print("coroutine:", coroutine.resume(co, 1)); print("coroutine:", coroutine.resume(co, 10))
+local mt = setmetatable({}, { __index = function(_, k) return k .. "!" end, __add = function() return "added" end })
+print("metatables:", mt.roar, mt + mt)
+print("math:", math.floor(3.7), math.sqrt(2), math.sin(0), math.max(4, 9, 2), math.huge)
+print("tostring/tonumber:", tostring(12.5), tonumber("0x1F"), tonumber("  3.25  "))
+local big = {} for i = 1, 20000 do big[i] = "s" .. i end
+print("gc:", collectgarbage("count") > 0, #big, select("#", 1, 2, 3))
+print("os.time ok:", type(os.time()), os.date("%Y") ~= nil)
+print("done")
