@@ -41,14 +41,24 @@ Some things worth knowing:
 
 ## How It Works
 
-  - `tools/recomp.py` reads the original executable (a 32-bit Intel Mach-O) and translates every
-    function into C that runs against a simulated 32-bit address space. The executable's symbol
-    table gives the exact function boundaries and names.
-  - `runtime/` is what the translated code runs on: the CPU state, memory, threads, and
-    re-implementations of the 2011 system libraries the game imported (libc, the C++ runtime,
-    CoreFoundation and others), with the original 32-bit data layouts.
-  - Platform replacements: a Cocoa/OpenGL host (`runtime/app.m`, `runtime/gl.c`), an FMOD Ex
-    replacement on CoreAudio (`runtime/fmod.c`), and an offline Steam layer (`runtime/steam.c`).
+JPTG Recomp is built on [Recomp-Framework](https://github.com/NightSightProductions/Recomp-Framework),
+NightSightProductions' static recompiler, included as the `framework/` submodule (clone with
+`git clone --recursive`, or run `git submodule update --init`). Its 32-bit Mac target (`framework/mac32`)
+started out as this project.
+
+  - The framework's translator (`framework/mac32/tools/recomp32.py`) reads the original executable
+    (a 32-bit Intel Mach-O) and translates every function into C that runs against a simulated
+    32-bit address space. The executable's symbol table gives the exact function boundaries and names.
+  - The framework's runtime (`framework/mac32/runtime/`) is what the translated code runs on: the CPU
+    state, memory, threads, and re-implementations of the 2011 system libraries the game imported
+    (libc, the C++ runtime, CoreFoundation and others) with the original 32-bit data layouts, plus a
+    Cocoa/OpenGL host, an FMOD Ex replacement on CoreAudio and an offline Steam layer.
+  - This repository holds what is specific to the game:
+    - `src/game.c`: the game's settings (its app bundle, preferences domain, save folder);
+    - `src/engine.c`: how the host drives Telltale's engine (its `GameEngine_*` C API), and native
+      replacements for the engine's own Mac platform layer (`Apple_*`) and renderer bridge;
+    - `tools/hle.txt`: the addresses of those engine functions in the supported release;
+    - the installer and the Lua regression test.
   - The build happens on your machine from your copy of the game, and the app loads the game's
     data from your Steam installation at run time.
 
@@ -139,8 +149,9 @@ The build downloads two Python packages, [Capstone](https://www.capstone-engine.
 
 ### Tests
 
-`make && tests/run.sh` builds a small test harness from the game's embedded Lua interpreter and
-zlib (`make gen` translates just that part of the executable) and checks it against recorded output.
+`make test-gen && make && tests/run.sh` builds a small test harness from the game's embedded Lua
+interpreter and zlib (`make test-gen` translates just that part of the executable) and checks it
+against recorded output.
 
 ### Debugging Options
 
@@ -148,14 +159,14 @@ These environment variables are read by the game when started from a terminal:
 
 | Variable | Effect |
 |----------|--------|
-| `JP_STRICT=1` | Stop on any call into a system function that is not implemented, instead of logging it |
-| `JP_WATCH=name,...` | Log every call to the game functions whose names contain one of the given strings |
-| `JP_TRACE_FILES=1` | Log file access |
-| `JP_TRACE_GL=1`, `JP_TRACE_GLARGS=glFunc,...` | Log OpenGL calls, optionally with arguments |
-| `JP_TRACE_FMOD=1` | Log audio activity |
+| `RT32_STRICT=1` | Stop on any call into a system function that is not implemented, instead of logging it |
+| `RT32_WATCH=name,...` | Log every call to the game functions whose names contain one of the given strings |
+| `RT32_TRACE_FILES=1` | Log file access |
+| `RT32_TRACE_GL=1`, `RT32_TRACE_GLARGS=glFunc,...` | Log OpenGL calls, optionally with arguments |
+| `RT32_TRACE_FMOD=1` | Log audio activity |
 
-`make memcheck` builds a variant that reports writes to a chosen memory range (`JP_MC_LO`,
-`JP_MC_HI`, `JP_MC_ARM`), which is useful for tracking down memory corruption.
+`make memcheck` builds a variant that reports writes to a chosen memory range (`RT32_MC_LO`,
+`RT32_MC_HI`, `RT32_MC_ARM`), which is useful for tracking down memory corruption.
 
 ## Acknowledgements
 

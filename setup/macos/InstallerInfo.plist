@@ -6,6 +6,8 @@
 	<string>Install JPTG Recomp</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.nightsightproductions.jptg-recomp.installer</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
 	<string>installer</string>
 	<key>CFBundlePackageType</key>

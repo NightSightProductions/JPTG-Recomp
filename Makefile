@@ -1,82 +1,46 @@
-CC      = clang
-CFLAGS  = -O1 -g -arch arm64 -mmacosx-version-min=11.0 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-deprecated-declarations
-GEN_SRC = $(wildcard gen/code_*.c) gen/tables.c
-RT_SRC  = runtime/rt.c runtime/shims.c runtime/sys.c runtime/cxx.c runtime/libc2.c runtime/platform.c runtime/steam.c runtime/fmod.c runtime/vorbis.c
-OBJ     = $(patsubst %.c,build/%.o,$(GEN_SRC) $(RT_SRC))
+# Jurassic Park: The Game on Recomp-Framework (framework/, a git submodule): the 32-bit Intel Mac release statically
+# recompiled to native arm64 (framework/mac32).
+#   make full-gen          translate the whole executable (orig.bin -> gen_full/)
+#   make -j8 full app      build build/JurassicPark
+#   make bundle GAME=...   build/Jurassic Park The Game.app (icon from the user's copy at GAME)
+#   make memcheck          a build that reports guest writes to a chosen range (RT32_MC_LO/HI/ARM)
+#   make test-gen && make && tests/run.sh   Lua regression test on a partial translation (gen/)
+FW          = framework
+PYTHON      = .venv/bin/python
+BUILD       = build
+GAME_BIN    = orig.bin
+TEXT_LO     = 2600
+TEXT_HI     = 49d140
+GEN_DIR     = gen_full
+HLE         = tools/hle.txt
+APP_NAME    = JurassicPark
+BUNDLE_NAME = Jurassic Park The Game
+INFO_PLIST  = packaging/Info.plist
+GAME       ?= $(HOME)/Library/Application Support/Steam/steamapps/common/JurassicPark/JurassicPark100.app
+GAME_ICON   = $(GAME)/Contents/Resources/GameApp.icns
+GAME_SRC    = src/game.c src/engine.c
 
-all: build/test_lua
+all: $(BUILD)/test_lua
 
-build/%.o: %.c runtime/rt.h runtime/tables.h
+include $(FW)/mac32/mac32.mk
+
+full-gen: gen
+full: $(BUILD)/libgame32.a
+.PHONY: all full-gen full test-gen test
+
+# ---- Lua regression test: the game's embedded zlib + Lua 5.1 VM, translated on their own ----
+TEST_LO = b1cf2
+TEST_HI = d5c66
+TEST_SRC = $(wildcard gen/code_*.c) gen/tables.c
+TEST_OBJ = $(patsubst %.c,$(BUILD)/test/%.o,$(TEST_SRC))
+TEST_RT  = $(patsubst %.c,$(BUILD)/m32/%.o,rt.c shims.c sys.c cxx.c libc2.c cf.c steam.c fmod.c vorbis.c)
+test-gen:
+	$(PYTHON) $(M32)/tools/recomp32.py $(GAME_BIN) $(TEST_LO) $(TEST_HI) gen --hle $(HLE)
+$(BUILD)/test/%.o: %.c $(M32_HDR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
-
-build/test_lua: $(OBJ) build/runtime/test_lua.o
-	$(CC) $(CFLAGS) $^ -lz -lc++ -framework CoreFoundation -framework ApplicationServices -framework AudioToolbox -framework CoreAudio -o $@
-
-gen:
-	.venv/bin/python tools/recomp.py b1cf2 d5c66 gen
-
-clean:
-	rm -rf build
-
-.PHONY: all gen clean
-
-# ---- whole-binary build ----
-FULL_SRC = $(wildcard gen_full/code_*.c) gen_full/tables.c
-FULL_OBJ = $(patsubst %.c,build/%.o,$(FULL_SRC))
-
-full-gen:
-	.venv/bin/python tools/recomp.py 2600 49d140 gen_full
-
-build/libjp.a: $(FULL_OBJ)
-	ar rcs $@ $^
-
-full: build/libjp.a
-
-.PHONY: full full-gen
-
-build/boot: build/libjp.a $(patsubst %.c,build/%.o,$(RT_SRC)) build/runtime/boot.o
-	$(CC) $(CFLAGS) build/runtime/boot.o $(patsubst %.c,build/%.o,$(RT_SRC)) build/libjp.a -lz -lc++ -framework CoreFoundation -framework ApplicationServices -framework AudioToolbox -framework CoreAudio -o $@
-
-# ---- native app ----
-HOST_SRC = $(RT_SRC) runtime/gl.c gen_host/gl_gen.c
-HOST_OBJ = $(patsubst %.c,build/%.o,$(HOST_SRC)) build/runtime/app.o
-FRAMEWORKS = -framework CoreFoundation -framework ApplicationServices -framework Cocoa -framework OpenGL -framework AudioToolbox -framework CoreAudio
-
-gen_host/gl_gen.c: tools/glgen.py
-	@mkdir -p gen_host
-	.venv/bin/python tools/glgen.py $@
-
-build/runtime/app.o: runtime/app.m runtime/rt.h runtime/tables.h
-	@mkdir -p build/runtime
-	$(CC) $(CFLAGS) -fobjc-arc -c $< -o $@
-
-build/JurassicPark: build/libjp.a $(HOST_OBJ)
-	$(CC) $(CFLAGS) $(HOST_OBJ) build/libjp.a -lz -lc++ $(FRAMEWORKS) -o $@
-
-app: build/JurassicPark
-.PHONY: app
-
-# ---- debug build with guest write checking (JP_MC_LO/HI/ARM) ----
-MC_OBJ = $(patsubst %.c,build-mc/%.o,$(FULL_SRC) $(HOST_SRC))
-build-mc/%.o: %.c runtime/rt.h runtime/tables.h
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -DMEMCHECK -c $< -o $@
-build-mc/runtime/app.o: runtime/app.m runtime/rt.h runtime/tables.h
-	@mkdir -p build-mc/runtime
-	$(CC) $(CFLAGS) -DMEMCHECK -fobjc-arc -c $< -o $@
-build-mc/JurassicPark: $(MC_OBJ) build-mc/runtime/app.o
-	$(CC) $(CFLAGS) $^ -lz -lc++ $(FRAMEWORKS) -o $@
-memcheck: build-mc/JurassicPark
-.PHONY: memcheck
-
-# ---- double-clickable app bundle (uses the user's own game install for data and icon) ----
-GAME ?= $(HOME)/Library/Application Support/Steam/steamapps/common/JurassicPark/JurassicPark100.app
-bundle: build/JurassicPark packaging/Info.plist
-	rm -rf "build/Jurassic Park The Game.app"
-	mkdir -p "build/Jurassic Park The Game.app/Contents/MacOS" "build/Jurassic Park The Game.app/Contents/Resources"
-	cp build/JurassicPark "build/Jurassic Park The Game.app/Contents/MacOS/JurassicPark"
-	cp packaging/Info.plist "build/Jurassic Park The Game.app/Contents/Info.plist"
-	-cp "$(GAME)/Contents/Resources/GameApp.icns" "build/Jurassic Park The Game.app/Contents/Resources/"
-	codesign --force --sign - "build/Jurassic Park The Game.app"
-.PHONY: bundle
+$(BUILD)/test_lua: $(TEST_OBJ) $(TEST_RT) $(BUILD)/game/src/game.o $(BUILD)/test/tests/test_lua.o
+	$(CC) $(CFLAGS) $^ -lz -lc++ -framework CoreFoundation -framework ApplicationServices -framework AudioToolbox \
+	    -framework CoreAudio -o $@
+test: $(BUILD)/test_lua
+	tests/run.sh
