@@ -83,6 +83,7 @@ a trademark of its respective owners.
 ## Support and Feedback
 
   * [GitHub Issue Tracker](https://github.com/NightSightProductions/JPTG-Recomp/issues)
+  * [Discord](https://discord.gg/GKacpbpyQb)
 
 When reporting a problem, include `~/Library/Logs/jp-recomp.log` from the session where it happened.
 The log is replaced every time the game starts.

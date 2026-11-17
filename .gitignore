@@ -3,6 +3,7 @@
 # game data or third_party/Blowfish.h.
 /*
 !/.gitignore
+!/.github/
 !/README.md
 !/LICENSE
 !/Makefile
